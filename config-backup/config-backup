@@ -1,0 +1,38 @@
+from netmiko import ConnectHandler
+
+SW1 = {'device_type': 'cisco_ios',
+       'host': '10.0.0.1',
+       'username': 'cristi',
+       'password': 'cristian',
+       'secret': 'cristian',
+       }
+
+SW2 = {'device_type': 'cisco_ios',
+       'host': '10.0.0.2',
+       'username': 'cristi',
+       'password': 'cristian',
+       'secret': 'cristian',
+       }
+
+SW3 = {'device_type': 'cisco_ios',
+       'host': '10.0.0.3',
+       'username': 'cristi',
+       'password': 'cristian',
+       'secret': 'cristian',
+       }
+
+SW4 = {'device_type': 'cisco_ios',
+       'host': '10.0.0.4',
+       'username': 'cristi',
+       'password': 'cristian',
+       'secret': 'cristian',
+       }
+
+device_list = [SW1, SW2, SW3, SW4]
+for device in device_list:
+    net_connect = ConnectHandler(**device)
+    net_connect.enable()
+    print("\n\n\n [+]Collecting running config for: " + device['host'])
+    output = net_connect.send_command('show run')
+    saveoutput = open("switch" + device['host'], "w")
+    saveoutput.write(output)
