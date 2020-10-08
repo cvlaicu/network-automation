@@ -1,0 +1,4 @@
+SW1 - device_type: cisco_ios host: 10.0.0.1 username: cristi password: cristian secret: cristian
+SW2 - device_type: cisco_ios host: 10.0.0.2 username: cristi password: cristian secret: cristian
+SW3 - device_type: cisco_ios host: 10.0.0.3 username: cristi password: cristian secret: cristian
+SW4 - device_type: cisco_ios host: 10.0.0.4 username: cristi password: cristian secret: cristian
