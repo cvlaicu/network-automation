@@ -1,0 +1,143 @@
+from netmiko import ConnectHandler
+import time
+
+
+# This is the main code that basically performs all the configuration.
+def main_code(sw):
+    # The following function performs a backup of the configuration. It saves the config in the same folder as the
+    # python source code.
+    def config_backup():
+        print("\n\n[+] Connecting to device: {} \n[+] Creating a backup of the running configuration for the device, "
+              "please wait. ".format(sw['host']))
+        sh_run = net_connect.send_command('show run')
+        saveoutput = open("switch" + sw['host'], "w")
+        saveoutput.write(sh_run)
+        print("\n\n[+] A backup is in place :).")
+        time.sleep(1.5)
+
+    # The vlan_check function checks in what VLAN the interface currently is in and prints the output.
+    def vlan_check(intf):
+        sh_int = net_connect.send_command("sh int status")
+        sh_int = sh_int.splitlines()
+        intf = intf.capitalize()
+        print("Port   Name\t\t     Status      Vlan\t      Duplex  Speed  Type\n" + "----" * 20)
+        for item in sh_int:
+            if intf in item:
+                print(item)
+
+    net_connect = ConnectHandler(**sw)
+    net_connect.enable()
+    config_backup()
+    int_status = net_connect.send_command('sh int status')
+    print("\n[+] The following interfaces are available on this switch:\n " + int_status + "\n")
+
+    int_status = int_status.splitlines()
+    my_ports = []
+    for x in int_status:
+        x = x.split()
+        try:
+            if "Port" not in x:
+                my_ports.append(x[0])
+        except IndexError:
+            pass
+
+    # The code is checking whether the interface introduced by the user is valid on the switch.
+    while True:
+        interface = input("\n\n[+] Please specify the interface you want to apply the change to (eg. Gi0/3): ")
+        interface = interface.capitalize()
+        if interface in my_ports:
+            break
+        else:
+            print("\n[-] The interface you introduced is not valid, please try again.  ")
+
+    # The while True: blocks of code enforce restrictions for the user input. For access mode, the user can enter
+    # only access/trunk.
+    while True:
+        switchport_mode = input("\n[+] Please specify the switchport mode (access/trunk): ")
+        switchport_mode = switchport_mode.lower()
+        modes = ["access", "trunk"]
+        if switchport_mode not in modes:
+            print("\n[-] Wrong input, please try again.\n")
+        else:
+            break
+
+    # As maximum VLAN number is 4094, the user is not allowed to enter a number that surpasses 4094.
+    while True:
+        vlan = input("\n[+] Please specify the VLAN to which you want to assign the interface: ")
+        if int(vlan) > 4094:
+            print("\n[-] Wrong VLAN number, please enter one from 1 to 4094.")
+        else:
+            break
+
+    config_commands = ['interface ' + interface,
+                       'switchport mode ' + switchport_mode,
+                       'switchport access vlan ' + vlan]
+
+    # The code sends the above defined configuration commands.
+    net_connect.send_config_set(config_commands)
+
+    print("\n[+] The new configuration for interface {} is the following:\n ".format(interface))
+    vlan_check(interface)
+    print("\n")
+
+
+# This block of code's purpose is to access the attached text file and to withdraw the log-in credentials.
+with open("switches.txt") as f:
+    print("[+] Hello! This is the list of devices available for configuration:\n ")
+    # Here, the code is opening the text file, it splits the strings in lists, then accesses the host name (element[0]
+    # and the IP (element[5])
+    output = f.read()
+    output = output.splitlines()
+    for elements in output:
+        elements = elements.split()
+        print(elements[0] + " with IP " + elements[5] + ";\n")
+
+    while True:
+        choice = input("[+] Would you like to establish a connection with all switches or would you like to configure "
+                       "only a single switch? (type 0 for all of them, 1 for a single switch): ")
+        if choice == "0" or choice == "1":
+            h = 0
+            if choice == "0":
+                for element in output:
+                    element = element.split()
+                    SW = {'device_type': element[3],
+                          'host': element[5],
+                          'username': element[7],
+                          'password': element[9],
+                          'secret': element[11],
+                          }
+                    main_code(SW)
+                    h += 1
+
+            elif choice == "1":
+                login = input(
+                    "\n[+] Please specify to which switch you would like to log in: ")
+                z = 0
+                for element in output:
+                    element = element.split()
+                    while True:
+                        if login in element:
+                            SW = {'device_type': element[3],
+                                  'host': element[5],
+                                  'username': element[7],
+                                  'password': element[9],
+                                  'secret': element[11],
+                                  }
+                            # Here, the user is being asked once again if he wants to connect to the specified device.
+                            connection = input("[+] Would you like to connect to {}? [y/n]: ".format(SW['host']))
+                            options_negative = ['n', 'no', 'N', 'NO']
+                            options_positive = ['y', 'yes', 'Y', 'YES']
+                            if connection in options_positive:
+                                main_code(SW)
+                            elif connection in options_negative:
+                                pass
+                            z += 1
+                            break
+                        else:
+                            z -= 1
+                            break
+                if z < 0:
+                    print("[-] Could not find the specified IP address.")
+
+        else:
+            print("[-] Introduced an invalid option, please try again.")
